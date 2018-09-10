@@ -20,6 +20,7 @@ module.exports = function (app) {
     
   app.route('/api/replies/:board')
     .get((req, res) => {
+      // send html file
       res.sendfile(process.cwd() + '/views/board.html')
     })
 
