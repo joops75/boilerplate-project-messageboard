@@ -9,7 +9,18 @@ var apiRoutes         = require('./routes/api.js');
 var fccTestingRoutes  = require('./routes/fcctesting.js');
 var runner            = require('./test-runner');
 
+const mongoose = require('mongoose');
+// require('./models/Reply');
+// require('./models/Thread');
+// require('./models/Board');
+
+require('dotenv').config();
+
+const port = process.env.PORT || 3000;
+
 var app = express();
+
+mongoose.connect(process.env.MONGO_URL_DEV, { useNewUrlParser: true });
 
 app.use('/public', express.static(process.cwd() + '/public'));
 
@@ -19,20 +30,20 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 //Sample front-end
-app.route('/b/:board/')
-  .get(function (req, res) {
-    res.sendFile(process.cwd() + '/views/board.html');
-  });
-app.route('/b/:board/:threadid')
-  .get(function (req, res) {
-    res.sendFile(process.cwd() + '/views/thread.html');
-  });
+// app.route('/b/:board/')
+//   .get(function (req, res) {
+//     res.sendFile(process.cwd() + '/views/board.html');
+//   });
+// app.route('/b/:board/:threadid')
+//   .get(function (req, res) {
+//     res.sendFile(process.cwd() + '/views/thread.html');
+//   });
 
 //Index page (static HTML)
-app.route('/')
-  .get(function (req, res) {
-    res.sendFile(process.cwd() + '/views/index.html');
-  });
+// app.route('/')
+//   .get(function (req, res) {
+//     res.sendFile(process.cwd() + '/views/index.html');
+//   });
 
 //For FCC testing purposes
 fccTestingRoutes(app);
@@ -51,8 +62,8 @@ app.use(function(req, res, next) {
 });
 
 //Start our server and tests!
-app.listen(process.env.PORT || 3000, function () {
-  console.log("Listening on port " + process.env.PORT);
+app.listen(port, function () {
+  console.log("Listening on port " + port);
   if(process.env.NODE_ENV==='test') {
     console.log('Running Tests...');
     setTimeout(function () {
