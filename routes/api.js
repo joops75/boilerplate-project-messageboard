@@ -10,18 +10,30 @@
 
 var expect = require('chai').expect;
 
+var messageController = require('../controllers/messageController');
+
 module.exports = function (app) {
   
-  app.route('/api/threads/:board')
-    .get((req, res) => {
-      // send html file
-      res.sendfile(process.cwd() + '/views/thread.html')
-    })
+  app.post('/api/threads/:board', messageController.postThread);
+
+  app.post('/api/replies/:board', messageController.postReply);
+  
+  app.get('/', messageController.getIndexPage);
+  
+  app.get('/b/:board/', messageController.getBoard);
+  
+  app.get('/api/threads/:board', messageController.getBoardItems);
+  
+  app.get('/b/:board/:threadid', messageController.getThread);
     
-  app.route('/api/replies/:board')
-    .get((req, res) => {
-      // send html file
-      res.sendfile(process.cwd() + '/views/board.html')
-    })
+  app.get('/api/replies/:board', messageController.getReplies);
+
+  app.delete('/api/threads/:board', messageController.deleteThread);
+
+  app.delete('/api/replies/:board', messageController.deleteReply);
+
+  app.put('/api/threads/:board', messageController.reportThread);
+
+  app.put('/api/replies/:board', messageController.reportReply);
 
 };
