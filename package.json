@@ -7,9 +7,26 @@
 	"description": "What am I about?",
 	"main": "server.js",
 	"scripts": {
-		"start": "node server.js"
+		"start": "node server.js",
+		"test": "better-npm-run test",
+		"fcctest": "better-npm-run fcctest"
+	},
+	"betterScripts": {
+	  "test": {
+			"command": "nodemon --exec \"mocha --ui tdd tests/2_functional-tests.js\"",
+			"env": {
+				"NODE_ENV": "test"
+			}
+	  },
+	  "fcctest": {
+			"command": "node server.js",
+			"env": {
+				"NODE_ENV": "test"
+			}
+	  }
 	},
 	"dependencies": {
+		"better-npm-run": "^0.1.1",
 		"body-parser": "^1.15.2",
 		"chai": "^3.5.0",
 		"chai-http": "^3.0.0",
