@@ -13,18 +13,35 @@ var server = require('../server');
 
 const Browser = require('zombie');
 const mongoose = require('mongoose');
+const Thread = mongoose.model('Thread');
+const Reply = mongoose.model('Reply');
 
 Browser.site = process.env.HOME_URL;
 let browser;
-const Thread = mongoose.model('Thread');
+let thread_id;
 
 chai.use(chaiHttp);
+
+before(function(done) {
+  browser = new Browser();
+  mongoose.connection.dropDatabase();
+  mongoose.connect(process.env.MONGO_URL_TEST, { useNewUrlParser: true });
+  mongoose.connection
+    .once('open', () => { done(); })
+    .on('error', err => {
+        console.warn(err);
+    });
+});
+
+beforeEach(function(done) {
+  return browser.visit('/b/test', done);
+});
 
 
 suite('Functional Tests', function() {
 
   suite('API ROUTING FOR /api/threads/:board', function() {
-    
+
     suite('POST', function() {
       test('Post to test board', function(done) {
         chai.request(server)
@@ -33,7 +50,7 @@ suite('Functional Tests', function() {
             text: 'Hi there',
             delete_password: '123'
           })
-          .end((err, res) => {
+          .end(() => {
             Thread.findOne({ text: 'Hi there' }, (err, doc) => {
               if (err) {
                 assert.fail();
@@ -48,10 +65,6 @@ suite('Functional Tests', function() {
     });
 
     suite('GET', function() {
-      browser = new Browser();
-      suiteSetup(function(done) {
-        return browser.visit('/b/test', done);
-      });
       
       test('Get posted thread info', function(done) {
         browser.assert.text('.main h3', 'Hi there');
@@ -60,20 +73,15 @@ suite('Functional Tests', function() {
     });
     //put and delete test suites reversed
     suite('PUT', function() {
-      // browser = new Browser();
-      suiteSetup(function(done) {
-        return browser.visit('/b/test', done);
-      });
       
       test('Report thread', function(done) {
-        browser.pressButton('form#reportThread input', () => {
+        browser.pressButton('Report', () => {
           browser.assert.success();
           Thread.findOne({ text: 'Hi there' }, (err, doc) => {
             if (err) {
               assert.fail();
               return done();
             }
-            assert.equal(doc.text, 'Hi there', 'text inserted');
             assert.isTrue(doc.reported);
             done();
           })
@@ -82,36 +90,47 @@ suite('Functional Tests', function() {
     });
     
     suite('DELETE', function() {
-      // browser = new Browser();
-      suiteSetup(function(done) {
-        return browser.visit('/b/test', done);
-      });
       
       test('Delete thread', function(done) {
-        browser.fill('delete_password', '123')
-        browser.pressButton('form#deleteThread submit', () => {
-          browser.assert.success();
-          Thread.findOne({ text: 'Hi there' }, (err, doc) => {
-            if (err) {
-              assert.fail();
-              return done();
-            }
-            assert.isNull(doc);
-            done();
+        thread_id = browser.evaluate('document.querySelector("a").href').split('/').reverse()[0];
+        chai.request(server)
+          .del('/api/threads/test')
+          .send({ thread_id, delete_password: '123' })
+          .end(() => {
+            Thread.findById(thread_id, (err, doc) => {
+              if (err) {
+                assert.fail();
+                return done();
+              }
+              assert.isNull(doc);
+              done();
+            });
           })
-        });
+        // can't get code below to work, after 'pressButton' is executed, req.body remains as an empty object
+        // const threadURL = browser.evaluate('document.querySelector("a").href');
+        // browser.visit(threadURL, () => {
+        //   browser.fill('input[name=delete_password]', '123')
+        //   const enteredPassword = browser.evaluate('document.getElementsByTagName("input")[3].value')
+        //   browser.pressButton('Delete', () => {
+        //     console.log('check')
+        //     browser.assert.success();
+        //     Thread.findOne({ text: 'Hi there' }, (err, doc) => {
+        //       if (err) {
+        //         assert.fail();
+        //         return done();
+        //       }
+        //       assert.isNull(doc);
+        //       done();
+        //     })
+        //   });
+        // });
       });
     });
-    
 
   });
   
-  suite('API ROUTING FOR /api/replies/:board', function() {    
-    browser = new Browser();
-    beforeEach(function(done) {
-      return browser.visit('/b/test', done);
-    });
-
+  suite('API ROUTING FOR /api/replies/:board', function() {
+    // insert a new thread into empty database
     suiteSetup(function(done) {
       chai.request(server)
         .post('/api/threads/test')
@@ -125,76 +144,95 @@ suite('Functional Tests', function() {
     });
     
     suite('POST', function() {
-      suiteSetup(function(done) {
-        browser.pressButton('.replies h5 a', () => {
-          browser.fill('#newReply textarea', 'Great reply');
-          browser.fill('#newReply input', 'password');
-          browser.pressButton('#newReply input submit', () => {
-            done();
-          });
-        })
-      });
       
       test('Post reply', function(done) {
-        browser.assert.text('#deleteReply p', 'Great reply');
-        Reply.findOne({ text: 'Great reply' }, (err, doc) => {
-          if (err) {
-            assert.fail();
-            return done();
-          }
-          assert.equal(doc.text, 'Great reply');
-          assert.equal(doc.delete_password, 'password');
-          done();
-        })
+        const textarea = browser.evaluate('document.getElementsByTagName("textarea")[1]');
+        browser.fill(textarea, 'Great reply');
+        const deleteInputBox = browser.evaluate('document.getElementsByTagName("input")[8]');
+        browser.fill(deleteInputBox, '789');
+        const submitButton = browser.evaluate('document.getElementsByTagName("input")[9]');
+        browser.pressButton(submitButton, () => {
+          Reply.findOne({ text: 'Great reply' }, (err, doc) => {
+            if (err) {
+              assert.fail();
+              return done();
+            }
+            assert.equal(doc.delete_password, '789');
+            done();
+          })
+        });
       });
     });
     
     suite('GET', function() {
       test('Get reply', done => {
+        thread_id = browser.evaluate('document.querySelector("a").href').split('/').reverse()[0];
         chai.request(server)
-          .get('/api/replies/test')
+          .get('/api/replies/test?thread_id=' + thread_id)
           .end((err, res) => {
-            chai.assert.equal(res.replies[0].text, 'Great reply');
+            assert.equal(res.body.replies[0].text, 'Great reply');
             done();
           });
       })
     });
     
     suite('PUT', function() {
-      suiteSetup(function(done) {
-        browser.pressButton('.replies h5 a', () => {
-          done();
-        })
-      });
+      
       test('Report reply', done => {
-        browser.pressButton('#reportReply input submit', () => {
-          Reply.findOne({ text: 'Great reply' }, (err, doc) => {
-            if (err) {
-              assert.fail();
-              return done();
-            }
-            chai.assert.isTrue(doc.reported);
-            done();
+        thread_id = browser.evaluate('document.querySelector("a").href').split('/').reverse()[0];
+        browser.visit('/b/test/' + thread_id, () => {
+          const reportButton = browser.evaluate('document.getElementsByTagName("input")[7]');
+          browser.pressButton(reportButton, () => {
+            Reply.findOne({ text: 'Great reply' }, (err, doc) => {
+              if (err) {
+                assert.fail();
+                return done();
+              }
+              assert.isTrue(doc.reported);
+              done();
+            });
           });
-        });
+        })
       })
     });
     
     suite('DELETE', function() {
-      suiteSetup(function(done) {
-        browser.pressButton('.replies h5 a', () => {
-          done();
-        })
-      });
       test('Delete reply', done => {
-        browser.fill('#deleteReply input delete_password', 'password');
-        browser.pressButton('#deleteReply input submit', () => {
-          browser.assert.success();
-          browser.visit('/b/test', () => {
-            browser.assert.text('#deleteReply p', '[deleted]');
-            done();
+        const reply_id = browser.evaluate('document.getElementsByTagName("p")[1].textContent').split(' ')[1];
+        chai.request(server)
+          .del('/api/replies/test')
+          .send({
+            reply_id,
+            delete_password: '789'
+          })
+          .end(() => {
+            Reply.findById(reply_id, (err, doc) => {
+              if (err) {
+                assert.fail();
+                return done;
+              }
+              assert.equal(doc.text, '[deleted]')
+              done();
+            })
           });
-        });
+        // can't get code below to work, after 'pressButton' is executed, req.body remains as an empty object
+        // browser.visit('/b/test/' + thread_id, () => {
+        //   const passwordBox = browser.evaluate('document.getElementsByTagName("input")[10]');
+        //   browser.fill(passwordBox, '789');
+        //   const deleteButton = browser.evaluate('document.getElementsByTagName("input")[11]');
+        //   console.log('passwordBox', passwordBox.name)
+        //   console.log('deleteButton', deleteButton.value)
+        //   browser.pressButton(deleteButton, () => {
+        //     Reply.findOne({ delete_password: '789' }, (err, doc) => {
+        //       if (err) {
+        //         assert.fail();
+        //         return done;
+        //       }
+        //       assert.equal(doc.text, '[deleted]')
+        //       done();
+        //     })
+        //   });
+        // });
       });
     });
     
