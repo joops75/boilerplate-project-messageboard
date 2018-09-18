@@ -86,9 +86,6 @@ module.exports = {
         })
     },
     reportThread(req, res) {
-        console.log('req.params', req.params)
-        console.log('req.body', req.body)
-        console.log('req.query', req.query)
         const { board } = req.params;
         const { thread_id } = req.body;
         Thread.findByIdAndUpdate(thread_id, { $set: { reported: true } }, err => {
@@ -97,9 +94,6 @@ module.exports = {
         });
     },
     reportReply(req, res) {
-        // console.log('req.params', req.params)
-        // console.log('req.body', req.body)
-        // console.log('req.query', req.query)
         const { board } = req.params;
         const { thread_id, reply_id } = req.body;
         Reply.findByIdAndUpdate(reply_id, { $set: { reported: true } }, err => {
