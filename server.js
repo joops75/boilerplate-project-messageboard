@@ -20,7 +20,11 @@ const port = process.env.PORT || 3000;
 
 var app = express();
 
-mongoose.connect(process.env.MONGO_URL_DEV, { useNewUrlParser: true });
+if (process.env.NODE_ENV === 'test') {
+  mongoose.connect(process.env.MONGO_URL_TEST, { useNewUrlParser: true });
+} else {
+  mongoose.connect(process.env.MONGO_URL_DEV, { useNewUrlParser: true });
+}
 
 app.use('/public', express.static(process.cwd() + '/public'));
 
