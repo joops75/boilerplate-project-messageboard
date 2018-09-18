@@ -34,7 +34,6 @@
       $(function() {
         // var currentBoard = window.location.pathname.slice(3,-1);
         var currentBoard = window.location.pathname.split('/')[2];
-        console.log('currentBoard', currentBoard)
         var url = "/api/threads/"+currentBoard;
         $('#boardTitle').text('Welcome to '+window.location.pathname)
         $.ajax({
@@ -43,14 +42,12 @@
           // data: 'JSON',
           success: function(data)
           {
-            console.log(data)
             var boardThreads= [];
             //
             // THIS ARRAY SET UP IS FOR CODE READABILITIES AND TESTING!
             // THIS IS NOT WHAT IT WOULD LOOK LIKE TO GO LIVE
             //
             data.forEach(function(ele) {
-              console.log(ele);//can I use typeScript please?!
               var thread = ['<div class="thread">'];
               thread.push('<div class="main">')
               thread.push('<p class="id">id: '+ele._id+' ('+ele.created_on+')</p>');
