@@ -24,14 +24,9 @@ if (process.env.NODE_ENV === 'test') {
   mongoose.connect(process.env.MONGO_URL_DEV, { useNewUrlParser: true });
 }
 
-app.use(helmet.frameguard({ action: 'deny' }));
+app.use(helmet.frameguard({ action: 'sameorigin' }));
 app.use(helmet.dnsPrefetchControl());
-app.use(helmet.contentSecurityPolicy({
-  directives: {
-    defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "trusted-cdn.com"]
-  }
-}));
+app.use(helmet.referrerPolicy({ policy: 'same-origin' }));
 
 app.use('/public', express.static(process.cwd() + '/public'));
 
